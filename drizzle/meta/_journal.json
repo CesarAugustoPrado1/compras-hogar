@@ -22,6 +22,13 @@
       "when": 1791517092741,
       "tag": "0002_ticket_images_path",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791583856451,
+      "tag": "0003_codigo_interno_y_nro_ticket",
+      "breakpoints": true
     }
   ]
 }

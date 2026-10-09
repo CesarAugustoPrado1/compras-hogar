@@ -3,13 +3,15 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { productAliases, products, stores, ticketImages, ticketItems, tickets } from "@/db/schema";
 import { fromLocalInput } from "./dates";
+import { isValidGtin } from "./gtin";
 import { extractTicket } from "@/lib/extract";
 import { readFileBytes } from "./storage";
 
 type NewItem = typeof ticketItems.$inferInsert;
 
-// Completa cada renglón con el producto ya conocido: primero por EAN,
-// después por cómo lo nombra ese supermercado (alias aprendido al validar).
+// Completa cada renglón con el producto ya conocido: primero por EAN, después por el
+// código interno del súper (visto en tickets validados) y por último por cómo lo nombra
+// ese supermercado (alias aprendido al validar).
 export async function matchKnownProducts(storeId: number | null, items: NewItem[]) {
   const eans = [...new Set(items.map((i) => i.ean).filter((e): e is string => Boolean(e)))];
   const byEan = new Map(
@@ -31,9 +33,32 @@ export async function matchKnownProducts(storeId: number | null, items: NewItem[
       : [],
   );
 
+  const codes = [...new Set(items.map((i) => i.storeCode).filter((c): c is string => Boolean(c)))];
+  const byCode = new Map<string, typeof products.$inferSelect>();
+  if (storeId && codes.length) {
+    const rows = await db
+      .select({ code: ticketItems.storeCode, product: products })
+      .from(ticketItems)
+      .innerJoin(tickets, eq(ticketItems.ticketId, tickets.id))
+      .innerJoin(products, eq(ticketItems.productId, products.id))
+      .where(
+        and(
+          eq(tickets.storeId, storeId),
+          eq(tickets.status, "validado"),
+          inArray(ticketItems.storeCode, codes),
+        ),
+      )
+      .orderBy(asc(tickets.validatedAt));
+    // El más reciente gana, por si el súper reasignó un código.
+    for (const r of rows) byCode.set(r.code!, r.product);
+  }
+
   return items.map((item) => {
     if (item.kind !== "producto") return item;
-    const product = (item.ean && byEan.get(item.ean)) || byAlias.get(item.rawText);
+    const product =
+      (item.ean && byEan.get(item.ean)) ||
+      (item.storeCode && byCode.get(item.storeCode)) ||
+      byAlias.get(item.rawText);
     if (!product) return item;
     return {
       ...item,
@@ -45,6 +70,13 @@ export async function matchKnownProducts(storeId: number | null, items: NewItem[
       category: product.category,
     };
   });
+}
+
+// Un "EAN" que no pasa el dígito verificador es en realidad un código interno del súper.
+export function splitCodes(ean: string | null, storeCode: string | null) {
+  const digits = ean?.replace(/\D/g, "") || null;
+  if (digits && isValidGtin(digits)) return { ean: digits, storeCode: storeCode?.trim() || null };
+  return { ean: null, storeCode: storeCode?.trim() || digits };
 }
 
 // Lee las fotos del ticket con IA y reemplaza sus renglones por lo extraído.
@@ -87,7 +119,7 @@ export async function runExtraction(ticketId: number) {
         position,
         kind: item.kind,
         rawText: item.rawText,
-        ean: item.ean?.replace(/\D/g, "") || null,
+        ...splitCodes(item.ean, item.storeCode),
         quantity: item.quantity,
         unit: item.unit,
         unitPrice: item.unitPrice,
@@ -106,6 +138,8 @@ export async function runExtraction(ticketId: number) {
       .update(tickets)
       .set({
         storeId,
+        branch: extracted.branch,
+        ticketNumber: extracted.ticketNumber,
         purchasedAt: fromLocalInput(extracted.purchasedAt),
         total: extracted.total,
         paymentMethod: extracted.paymentMethod,

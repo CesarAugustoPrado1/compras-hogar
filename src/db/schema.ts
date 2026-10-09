@@ -57,6 +57,8 @@ export const ticketStatus = pgEnum("ticket_status", ["borrador", "validado"]);
 export const tickets = pgTable("tickets", {
   id: serial("id").primaryKey(),
   storeId: integer("store_id").references(() => stores.id),
+  branch: text("branch"), // sucursal, ej. "Gorriti 1069"
+  ticketNumber: text("ticket_number"), // punto de venta y número, ej. "01098-00033941"
   purchasedAt: timestamp("purchased_at", { withTimezone: true }),
   total: numeric("total", { precision: 12, scale: 2, mode: "number" }),
   paymentMethod: text("payment_method"),
@@ -93,6 +95,7 @@ export const ticketItems = pgTable("ticket_items", {
   kind: itemKind("kind").notNull().default("producto"),
   rawText: text("raw_text").notNull(),
   ean: text("ean"),
+  storeCode: text("store_code"), // código interno del supermercado (PLU), ej. "4600"
   quantity: numeric("quantity", { precision: 10, scale: 3, mode: "number" }).notNull().default(1),
   unit: itemUnit("unit").notNull().default("u"),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2, mode: "number" }),

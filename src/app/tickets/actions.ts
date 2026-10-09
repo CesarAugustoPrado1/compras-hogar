@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { ticketImages, ticketItems, tickets } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { fromLocalInput } from "@/lib/dates";
+import { isValidGtin } from "@/lib/gtin";
 import { deleteFiles, saveFile } from "@/lib/storage";
 import { matchKnownProducts, rememberAlias, resolveProduct, runExtraction } from "@/lib/tickets";
 
@@ -62,6 +63,8 @@ const nullableNumber = z.number().finite().nullable();
 
 const TicketInput = z.object({
   storeId: z.number().int().nullable(),
+  branch: z.string().nullable(),
+  ticketNumber: z.string().nullable(),
   purchasedAt: z.string(),
   total: nullableNumber,
   paymentMethod: z.string().nullable(),
@@ -70,6 +73,7 @@ const TicketInput = z.object({
       kind: z.enum(["producto", "descuento", "otro"]),
       rawText: z.string().trim().min(1, "Hay un renglón sin descripción."),
       ean: z.string().nullable(),
+      storeCode: z.string().nullable(),
       quantity: z.number().finite().positive("Hay una cantidad inválida."),
       unit: z.enum(["u", "kg", "l"]),
       unitPrice: nullableNumber,
@@ -105,6 +109,7 @@ export async function saveTicket(
     position,
     rawText: item.rawText.trim(),
     ean: item.ean?.replace(/\D/g, "") || null,
+    storeCode: clean(item.storeCode),
     productName: clean(item.productName),
     brand: clean(item.brand),
     presentation: clean(item.presentation),
@@ -116,6 +121,12 @@ export async function saveTicket(
     if (!fromLocalInput(data.purchasedAt)) return { error: "Falta la fecha de compra." };
     const unnamed = items.find((i) => i.kind === "producto" && !i.productName);
     if (unnamed) return { error: `Falta el producto para "${unnamed.rawText}".` };
+    const badEan = items.find((i) => i.ean && !isValidGtin(i.ean));
+    if (badEan) {
+      return {
+        error: `El EAN de "${badEan.rawText}" no es válido. Revisalo o, si es un código del súper, pasalo a "Cód. súper".`,
+      };
+    }
 
     for (const item of items) {
       if (item.kind !== "producto") continue;
@@ -133,6 +144,8 @@ export async function saveTicket(
     .update(tickets)
     .set({
       storeId: data.storeId,
+      branch: clean(data.branch),
+      ticketNumber: clean(data.ticketNumber),
       purchasedAt: fromLocalInput(data.purchasedAt),
       total: data.total,
       paymentMethod: clean(data.paymentMethod),

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { stores, ticketImages, ticketItems, tickets, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
@@ -33,12 +33,25 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
   if (!ticket) notFound();
 
-  const [images, items, storeRows, validator] = await Promise.all([
+  const [images, items, storeRows, validator, duplicates] = await Promise.all([
     db.select().from(ticketImages).where(eq(ticketImages.ticketId, id)).orderBy(asc(ticketImages.position)),
     db.select().from(ticketItems).where(eq(ticketItems.ticketId, id)).orderBy(asc(ticketItems.position)),
     db.select({ id: stores.id, name: stores.name }).from(stores).orderBy(asc(stores.name)),
     ticket.validatedBy
       ? db.select({ name: users.name }).from(users).where(eq(users.id, ticket.validatedBy))
+      : Promise.resolve([]),
+    // El mismo comprobante cargado dos veces (mismo súper y número).
+    ticket.storeId && ticket.ticketNumber
+      ? db
+          .select({ id: tickets.id })
+          .from(tickets)
+          .where(
+            and(
+              eq(tickets.storeId, ticket.storeId),
+              eq(tickets.ticketNumber, ticket.ticketNumber),
+              ne(tickets.id, ticket.id),
+            ),
+          )
       : Promise.resolve([]),
   ]);
 
@@ -52,6 +65,20 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
             : "Por validar: revisá cada renglón contra la foto."}
         </p>
       </div>
+      {duplicates.length > 0 && (
+        <p className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-200">
+          Este comprobante parece estar cargado dos veces:{" "}
+          {duplicates.map((d, i) => (
+            <span key={d.id}>
+              {i > 0 && ", "}
+              <Link href={`/tickets/${d.id}`} className="underline">
+                ticket #{d.id}
+              </Link>
+            </span>
+          ))}
+          . Si es así, eliminá uno.
+        </p>
+      )}
       <TicketEditor
         // Al releer el ticket los renglones cambian de id: remonta el editor con los datos nuevos.
         key={items.map((i) => i.id).join(",")}
@@ -63,6 +90,8 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
         categories={[...CATEGORIES]}
         initial={{
           storeId: ticket.storeId,
+          branch: ticket.branch,
+          ticketNumber: ticket.ticketNumber,
           purchasedAt: toLocalInput(ticket.purchasedAt),
           total: ticket.total,
           paymentMethod: ticket.paymentMethod,
@@ -70,6 +99,7 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
             kind: i.kind,
             rawText: i.rawText,
             ean: i.ean,
+            storeCode: i.storeCode,
             quantity: i.quantity,
             unit: i.unit,
             unitPrice: i.unitPrice,

@@ -15,6 +15,7 @@ const emptyItem: Item = {
   kind: "producto",
   rawText: "",
   ean: null,
+  storeCode: null,
   quantity: 1,
   unit: "u",
   unitPrice: null,
@@ -213,6 +214,12 @@ export function TicketEditor({
             value={data.paymentMethod}
             onChange={(paymentMethod) => setData((d) => ({ ...d, paymentMethod }))}
           />
+          <TextField label="Sucursal" value={data.branch} onChange={(branch) => setData((d) => ({ ...d, branch }))} />
+          <TextField
+            label="Nro. de comprobante"
+            value={data.ticketNumber}
+            onChange={(ticketNumber) => setData((d) => ({ ...d, ticketNumber }))}
+          />
         </div>
 
         <div
@@ -301,6 +308,7 @@ export function TicketEditor({
                     </select>
                   </label>
                   <TextField label="EAN" value={item.ean} onChange={(v) => setItem(i, { ean: v })} />
+                  <TextField label="Cód. súper" value={item.storeCode} onChange={(v) => setItem(i, { storeCode: v })} />
                   {item.productId && (
                     <p className="col-span-full text-xs text-emerald-700 dark:text-emerald-400">
                       Producto ya conocido.{" "}
