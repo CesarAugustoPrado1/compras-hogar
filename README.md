@@ -8,23 +8,22 @@ Ver [OBJETIVOS.md](./OBJETIVOS.md) para la visión, los objetivos y los módulos
 
 Next.js 16 (App Router) · Tailwind · Drizzle ORM · Neon (Postgres) · despliegue en Vercel.
 
-## Puesta en marcha
+## Puesta en marcha (sin instalar nada, todo en Vercel)
 
-1. Instalar dependencias: `npm install`
-2. Copiar `.env.example` a `.env` y completar:
-   - `DATABASE_URL`: cadena de conexión de Neon.
-   - `SESSION_SECRET`: `openssl rand -base64 32`
-   - `ANTHROPIC_API_KEY`: API key de Claude (console.anthropic.com), para leer los tickets.
-   - `BLOB_READ_WRITE_TOKEN`: opcional en local. Sin él, las fotos se guardan en `.uploads/`.
-3. Crear las tablas: `npm run db:migrate`
-4. Cargar los supermercados iniciales (Coto, El Abastecedor): `npm run db:seed`
-5. Crear los usuarios (PIN de 4 a 8 dígitos):
-   ```
-   npm run user:set -- Cesar 1234
-   npm run user:set -- <nombre> <pin>
-   ```
-   El mismo comando sirve para cambiar un PIN.
-6. Levantar la app: `npm run dev` → http://localhost:3000
+1. **Vercel → Add New → Project**: importar este repo de GitHub. Framework: Next.js; el resto, por defecto.
+2. **Variables** (*Settings → Environment Variables*):
+   - `SESSION_SECRET`: una cadena larga al azar (ver abajo).
+   - `ANTHROPIC_API_KEY`: API key de Claude (console.anthropic.com → API Keys).
+3. **Base de datos** (*Storage → Connect Database → Neon*): conectar la base de Neon. Esto completa `DATABASE_URL` solo. Si ya tenés la base creada en Neon, podés pegar su cadena de conexión como variable `DATABASE_URL`.
+4. **Fotos** (*Storage → Create → Blob*): crear un Blob store y conectarlo al proyecto. Esto completa `BLOB_READ_WRITE_TOKEN`.
+5. **Redeploy** (*Deployments → ⋯ → Redeploy*) para que tome las variables. En cada build se crean o actualizan las tablas solas (`scripts/migrate.ts`).
+6. Abrir la URL de la app: la primera vez pide crear tu usuario y PIN. Después, en **Usuarios**, se agrega al resto de la familia.
+
+`SESSION_SECRET` se puede generar con `openssl rand -base64 32`, o en cualquier generador de contraseñas largas (40+ caracteres).
+
+### Desarrollo local (opcional)
+
+`npm install`, copiar `.env.example` a `.env`, completar y `npm run dev`. Sin `BLOB_READ_WRITE_TOKEN` las fotos se guardan en `.uploads/`. `npm run db:migrate` aplica las migraciones; `npm run user:set -- <nombre> <pin>` crea un usuario o le cambia el PIN.
 
 ## Acceso
 

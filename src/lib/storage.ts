@@ -13,6 +13,9 @@ export async function saveFile(pathname: string, data: Buffer, contentType: stri
     await put(pathname, data, { access: "private", contentType, addRandomSuffix: false });
     return;
   }
+  if (process.env.VERCEL) {
+    throw new Error("Falta conectar Vercel Blob al proyecto para guardar las fotos.");
+  }
   const file = path.join(LOCAL_DIR, pathname);
   await mkdir(path.dirname(file), { recursive: true });
   await writeFile(file, data);

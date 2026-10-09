@@ -30,15 +30,23 @@ export async function createTicket(_prev: UploadState, formData: FormData): Prom
     .values({ uploadedBy: user.id })
     .returning({ id: tickets.id });
 
-  const images = await Promise.all(
-    photos.map(async (photo, position) => {
-      const ext = photo.type.split("/")[1].replace("jpeg", "jpg");
-      const path = `tickets/${ticket.id}/${position + 1}.${ext}`;
-      await saveFile(path, Buffer.from(await photo.arrayBuffer()), photo.type);
-      return { ticketId: ticket.id, position, path, contentType: photo.type };
-    }),
-  );
-  await db.insert(ticketImages).values(images);
+  try {
+    const images = await Promise.all(
+      photos.map(async (photo, position) => {
+        const ext = photo.type.split("/")[1].replace("jpeg", "jpg");
+        const path = `tickets/${ticket.id}/${position + 1}.${ext}`;
+        await saveFile(path, Buffer.from(await photo.arrayBuffer()), photo.type);
+        return { ticketId: ticket.id, position, path, contentType: photo.type };
+      }),
+    );
+    await db.insert(ticketImages).values(images);
+  } catch (error) {
+    console.error("No se pudieron guardar las fotos", error);
+    await db.delete(tickets).where(eq(tickets.id, ticket.id));
+    return {
+      error: `No se pudieron guardar las fotos${error instanceof Error ? `: ${error.message}` : "."}`,
+    };
+  }
 
   await runExtraction(ticket.id);
   redirect(`/tickets/${ticket.id}`);

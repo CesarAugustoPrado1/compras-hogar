@@ -1,19 +1,45 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { login } from "./actions";
+import { createFirstUser, login } from "./actions";
+
+const field =
+  "rounded-lg border border-neutral-300 bg-transparent px-3 py-2 text-lg dark:border-neutral-700";
 
 export function LoginForm({ names }: { names: string[] }) {
+  return names.length === 0 ? <FirstUserForm /> : <PinForm names={names} />;
+}
+
+function FirstUserForm() {
+  const [state, action, pending] = useActionState(createFirstUser, undefined);
+  return (
+    <form action={action} className="flex flex-col gap-4">
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">
+        Primera vez: creá tu usuario. Después vas a poder agregar al resto de la familia.
+      </p>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Nombre
+        <input name="name" required maxLength={30} autoComplete="username" className={field} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        PIN (4 a 8 números)
+        <input name="pin" type="password" inputMode="numeric" pattern="\d{4,8}" required autoComplete="new-password" className={`${field} tracking-widest`} />
+      </label>
+      <label className="flex flex-col gap-1 text-sm font-medium">
+        Repetir PIN
+        <input name="pin2" type="password" inputMode="numeric" pattern="\d{4,8}" required autoComplete="new-password" className={`${field} tracking-widest`} />
+      </label>
+      {state?.error && <p className="text-sm text-red-600">{state.error}</p>}
+      <button type="submit" disabled={pending} className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white disabled:opacity-50">
+        {pending ? "Creando…" : "Crear y entrar"}
+      </button>
+    </form>
+  );
+}
+
+function PinForm({ names }: { names: string[] }) {
   const [state, action, pending] = useActionState(login, undefined);
   const [name, setName] = useState(names.length === 1 ? names[0] : "");
-
-  if (names.length === 0) {
-    return (
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Todavía no hay usuarios. Creá uno con <code>npm run user:set -- Nombre 1234</code>.
-      </p>
-    );
-  }
 
   return (
     <form action={action} className="flex flex-col gap-4">
