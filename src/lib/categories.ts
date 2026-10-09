@@ -1,0 +1,18 @@
+export const CATEGORIES = [
+  "Almacén",
+  "Lácteos",
+  "Quesos y fiambres",
+  "Carnes",
+  "Pescados",
+  "Frutas y verduras",
+  "Panadería",
+  "Congelados",
+  "Bebidas",
+  "Bebidas alcohólicas",
+  "Limpieza",
+  "Perfumería e higiene",
+  "Bebés",
+  "Mascotas",
+  "Hogar",
+  "Otros",
+] as const;

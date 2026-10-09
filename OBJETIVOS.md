@@ -39,7 +39,7 @@ Identificar qué se consume, con qué frecuencia, en qué cantidades, con qué e
 
 | # | Módulo | Qué hace | Objetivos que sirve |
 |---|--------|----------|---------------------|
-| 1 | **Lector de tickets** *(primero)* | Fotos de tickets (una o varias si es largo) → texto → normalización de productos → validación humana → guardado. | 4, 5 |
+| 1 | **Lector de tickets** *(primera versión lista)* | Fotos de tickets (una o varias si es largo) → texto → normalización de productos → validación humana → guardado. | 4, 5 |
 | 2 | **Precios de supermercados** | Precios de los supermercados más accesibles por distancia a casa, comparados contra nuestras compras habituales. | 3 |
 | 3 | **Análisis de datos** | Gasto, consumo, frecuencias, evolución de precios, patrones familiares. | 5, 3 |
 | 4 | **Predictivo y simulador** | Predice qué y cuándo hay que comprar; simula escenarios (dónde, cuánto, con qué promos) para minimizar gasto y evitar faltantes. | 2, 3, 1 |
@@ -59,11 +59,12 @@ Identificar qué se consume, con qué frecuencia, en qué cantidades, con qué e
 - **Repositorio:** GitHub (`compras-hogar`).
 - **Despliegue:** Vercel.
 - **Base de datos:** Neon (Postgres), incorporada cuando haga falta.
-- **IA:** a definir por módulo (Claude u otro proveedor en la nube, o modelo local).
+- **IA:** a definir por módulo. Lectura de tickets: Claude.
+- **Fotos:** Vercel Blob (privado).
+- **Acceso:** cada persona con su nombre y PIN.
 
 ## Preguntas abiertas
 
 - Confirmar que el "sistema nacional de identificación" al que nos referimos es EAN/GTIN (GS1 Argentina) / Precios Claros.
+- Ver con tickets reales de Coto y El Abastecedor si traen el EAN impreso o solo la descripción.
 - Qué supermercados y sucursales entran en el radio de "accesibles por distancia".
-- Cómo se autentican los usuarios (somos dos; ¿alcanza con algo simple?).
-- Dónde se guardan las fotos de los tickets (Vercel Blob, Neon, otro).

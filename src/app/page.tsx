@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { logout } from "./login/actions";
 
 const modules = [
-  { name: "Tickets", description: "Cargar fotos de tickets, normalizar y validar.", status: "En construcción" },
+  { name: "Tickets", description: "Cargar fotos de tickets, normalizar y validar.", status: "Disponible", href: "/tickets" },
   { name: "Precios", description: "Comparar supermercados cercanos contra lo que compramos.", status: "Más adelante" },
   { name: "Análisis", description: "Gasto, consumo y patrones de la familia.", status: "Más adelante" },
   { name: "Predicción", description: "Qué comprar, cuándo y dónde, con escenarios.", status: "Más adelante" },
@@ -19,15 +20,28 @@ export default function Home() {
         </Suspense>
       </header>
       <ul className="grid gap-3 sm:grid-cols-2">
-        {modules.map((m) => (
-          <li key={m.name} className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-            <div className="flex items-baseline justify-between gap-2">
-              <h2 className="font-medium">{m.name}</h2>
-              <span className="text-xs text-neutral-500">{m.status}</span>
-            </div>
-            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{m.description}</p>
-          </li>
-        ))}
+        {modules.map((m) => {
+          const content = (
+            <>
+              <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-medium">{m.name}</h2>
+                <span className={`text-xs ${m.href ? "text-emerald-600" : "text-neutral-500"}`}>{m.status}</span>
+              </div>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{m.description}</p>
+            </>
+          );
+          return (
+            <li key={m.name} className="rounded-xl border border-neutral-200 dark:border-neutral-800">
+              {m.href ? (
+                <Link href={m.href} className="block p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+                  {content}
+                </Link>
+              ) : (
+                <div className="p-4 opacity-60">{content}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </main>
   );

@@ -8,6 +8,20 @@
       "when": 1791516793463,
       "tag": "0000_flawless_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791517080847,
+      "tag": "0001_ticket_items_detalle",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791517092741,
+      "tag": "0002_ticket_images_path",
+      "breakpoints": true
     }
   ]
 }

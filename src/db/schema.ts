@@ -61,6 +61,8 @@ export const tickets = pgTable("tickets", {
   total: numeric("total", { precision: 12, scale: 2, mode: "number" }),
   paymentMethod: text("payment_method"),
   rawText: text("raw_text"),
+  // Lo que la IA no pudo leer bien o quiere que revisemos.
+  extractionNotes: text("extraction_notes"),
   status: ticketStatus("status").notNull().default("borrador"),
   uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
   validatedBy: integer("validated_by").references(() => users.id),
@@ -75,8 +77,12 @@ export const ticketImages = pgTable("ticket_images", {
     .notNull()
     .references(() => tickets.id, { onDelete: "cascade" }),
   position: integer("position").notNull(),
-  url: text("url").notNull(),
+  path: text("path").notNull(), // ruta en el almacenamiento (Vercel Blob privado o disco local)
+  contentType: text("content_type").notNull(),
 });
+
+export const itemKind = pgEnum("item_kind", ["producto", "descuento", "otro"]);
+export const itemUnit = pgEnum("item_unit", ["u", "kg", "l"]);
 
 export const ticketItems = pgTable("ticket_items", {
   id: serial("id").primaryKey(),
@@ -84,11 +90,19 @@ export const ticketItems = pgTable("ticket_items", {
     .notNull()
     .references(() => tickets.id, { onDelete: "cascade" }),
   position: integer("position").notNull(),
+  kind: itemKind("kind").notNull().default("producto"),
   rawText: text("raw_text").notNull(),
   ean: text("ean"),
   quantity: numeric("quantity", { precision: 10, scale: 3, mode: "number" }).notNull().default(1),
+  unit: itemUnit("unit").notNull().default("u"),
   unitPrice: numeric("unit_price", { precision: 12, scale: 2, mode: "number" }),
   discount: numeric("discount", { precision: 12, scale: 2, mode: "number" }),
   lineTotal: numeric("line_total", { precision: 12, scale: 2, mode: "number" }),
+  // Propuesta de producto normalizado (de la IA o de un alias ya conocido),
+  // editable en la validación. Al validar se vincula a products.
+  productName: text("product_name"),
+  brand: text("brand"),
+  presentation: text("presentation"),
+  category: text("category"),
   productId: integer("product_id").references(() => products.id),
 });
