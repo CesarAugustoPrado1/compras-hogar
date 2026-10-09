@@ -3,10 +3,11 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { del, get, put } from "@vercel/blob";
 
-// Fotos de tickets. Con BLOB_READ_WRITE_TOKEN van a Vercel Blob (privado);
-// sin él (desarrollo local) se guardan en .uploads/.
+// Fotos de tickets. Con un Blob store conectado (BLOB_READ_WRITE_TOKEN, o BLOB_STORE_ID
+// con la credencial OIDC de Vercel) van a Vercel Blob privado; si no, a .uploads/ en local.
 const LOCAL_DIR = path.join(process.cwd(), ".uploads");
-const blobEnabled = () => Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const blobEnabled = () =>
+  Boolean(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
 
 export async function saveFile(pathname: string, data: Buffer, contentType: string) {
   if (blobEnabled()) {
