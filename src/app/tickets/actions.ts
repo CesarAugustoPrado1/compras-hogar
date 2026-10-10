@@ -8,6 +8,7 @@ import { ticketImages, ticketItems, tickets } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { fromLocalInput } from "@/lib/dates";
 import { isValidGtin } from "@/lib/gtin";
+import { searchSepa } from "@/lib/sepa";
 import { deleteFiles, saveFile } from "@/lib/storage";
 import { matchKnownProducts, rememberAlias, resolveProduct, runExtraction } from "@/lib/tickets";
 
@@ -177,4 +178,9 @@ export async function deleteTicket(ticketId: number) {
   await db.delete(tickets).where(eq(tickets.id, ticketId));
   await deleteFiles(images.map((i) => i.path));
   redirect("/tickets");
+}
+
+export async function searchPreciosClaros(query: string) {
+  await getCurrentUser();
+  return searchSepa(query);
 }

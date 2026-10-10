@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { SepaMatch } from "@/lib/sepa";
 import {
   deleteTicket,
   retryExtraction,
@@ -8,6 +9,7 @@ import {
   suggestProducts,
   type TicketInput,
 } from "../actions";
+import { SepaInfo, SepaPicker } from "./sepa-picker";
 
 type Item = TicketInput["items"][number];
 
@@ -92,6 +94,7 @@ export function TicketEditor({
   stores,
   categories,
   initial,
+  sepa: initialSepa,
 }: {
   ticketId: number;
   status: "borrador" | "validado";
@@ -100,6 +103,7 @@ export function TicketEditor({
   stores: { id: number; name: string }[];
   categories: string[];
   initial: TicketInput;
+  sepa: Record<string, SepaMatch>;
 }) {
   const [data, setData] = useState(initial);
   // Clave estable por renglón para que React no mezcle inputs al borrar o insertar.
@@ -108,6 +112,8 @@ export function TicketEditor({
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string }>();
   const [pending, startTransition] = useTransition();
   const [zoom, setZoom] = useState<string>();
+  const [sepa, setSepa] = useState(initialSepa);
+  const [picking, setPicking] = useState<number>(); // clave del renglón con el buscador abierto
 
   const sum = data.items.reduce((acc, i) => acc + (i.lineTotal ?? 0), 0);
   const diff = data.total === null ? null : Math.round((data.total - sum) * 100) / 100;
@@ -309,6 +315,37 @@ export function TicketEditor({
                   </label>
                   <TextField label="EAN" value={item.ean} onChange={(v) => setItem(i, { ean: v })} />
                   <TextField label="Cód. súper" value={item.storeCode} onChange={(v) => setItem(i, { storeCode: v })} />
+                  {item.ean && sepa[item.ean] && (
+                    <p className="col-span-full text-xs text-sky-700 dark:text-sky-400">
+                      <SepaInfo match={sepa[item.ean]} />
+                    </p>
+                  )}
+                  {picking === keys[i] ? (
+                    <SepaPicker
+                      initialQuery={[item.productName, item.brand, item.presentation].filter(Boolean).join(" ") || item.rawText}
+                      onClose={() => setPicking(undefined)}
+                      onPick={(m) => {
+                        setSepa((prev) => ({ ...prev, [m.ean]: m }));
+                        setItem(i, {
+                          ean: m.ean,
+                          brand: item.brand ?? m.brand,
+                          // Si se compró por peso, la presentación del envase de Precios Claros no aplica.
+                          presentation:
+                            item.presentation ??
+                            (item.unit === "u" && m.quantity && m.unit ? `${m.quantity} ${m.unit}` : null),
+                        });
+                        setPicking(undefined);
+                      }}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPicking(keys[i])}
+                      className="col-span-full justify-self-start text-xs text-sky-700 underline dark:text-sky-400"
+                    >
+                      {item.ean ? "Cambiar producto de Precios Claros" : "Buscar en Precios Claros"}
+                    </button>
+                  )}
                   {item.productId && (
                     <p className="col-span-full text-xs text-emerald-700 dark:text-emerald-400">
                       Producto ya conocido.{" "}

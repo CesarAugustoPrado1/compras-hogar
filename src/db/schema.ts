@@ -1,13 +1,18 @@
 import {
+  date,
+  doublePrecision,
+  index,
   integer,
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Usuarios del hogar. Entran con nombre + PIN.
 export const users = pgTable("users", {
@@ -108,4 +113,68 @@ export const ticketItems = pgTable("ticket_items", {
   presentation: text("presentation"),
   category: text("category"),
   productId: integer("product_id").references(() => products.id),
+});
+
+// ---------------------------------------------------------------------------
+// Precios Claros (base SEPA). Se importa todos los días con una GitHub Action
+// (scripts/sepa), solo para las sucursales cercanas a casa.
+
+export const sepaBranches = pgTable("sepa_branches", {
+  id: text("id").primaryKey(), // "comercio-bandera-sucursal"
+  chain: text("chain").notNull(), // bandera, ej. "Coto", "Carrefour Market"
+  company: text("company"), // razón social
+  name: text("name"),
+  address: text("address"),
+  locality: text("locality"),
+  province: text("province"),
+  lat: doublePrecision("lat").notNull(),
+  lon: doublePrecision("lon").notNull(),
+  distanceKm: doublePrecision("distance_km").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const sepaProducts = pgTable(
+  "sepa_products",
+  {
+    ean: text("ean").primaryKey(),
+    description: text("description").notNull(),
+    brand: text("brand"),
+    quantity: numeric("quantity", { precision: 12, scale: 3, mode: "number" }),
+    unit: text("unit"),
+    // descripción + marca en minúsculas y sin acentos, para la búsqueda aproximada (pg_trgm)
+    searchText: text("search_text").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sepa_products_search_idx").using("gin", sql`${t.searchText} gin_trgm_ops`)],
+);
+
+export const sepaPrices = pgTable(
+  "sepa_prices",
+  {
+    branchId: text("branch_id")
+      .notNull()
+      .references(() => sepaBranches.id, { onDelete: "cascade" }),
+    ean: text("ean")
+      .notNull()
+      .references(() => sepaProducts.ean, { onDelete: "cascade" }),
+    price: numeric("price", { precision: 12, scale: 2, mode: "number" }).notNull(),
+    refPrice: numeric("ref_price", { precision: 12, scale: 2, mode: "number" }),
+    refUnit: text("ref_unit"), // ej. "1 kg", "1 lt"
+    promo1Price: numeric("promo1_price", { precision: 12, scale: 2, mode: "number" }),
+    promo1Text: text("promo1_text"),
+    promo2Price: numeric("promo2_price", { precision: 12, scale: 2, mode: "number" }),
+    promo2Text: text("promo2_text"),
+    date: date("date").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.branchId, t.ean] }), index("sepa_prices_ean_idx").on(t.ean)],
+);
+
+export const sepaImports = pgTable("sepa_imports", {
+  id: serial("id").primaryKey(),
+  dataDate: date("data_date"),
+  source: text("source"),
+  branches: integer("branches").notNull(),
+  products: integer("products").notNull(),
+  prices: integer("prices").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

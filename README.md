@@ -38,6 +38,17 @@ Cada persona elige su nombre y entra con su PIN. Después de 5 intentos fallidos
 
 Las fotos se guardan en Vercel Blob **privado** y solo se ven con sesión iniciada (`/fotos/...`).
 
+## Precios Claros (base SEPA)
+
+Todos los días, la GitHub Action **Precios Claros** (`.github/workflows/precios-claros.yml`) descarga la base SEPA del portal de datos abiertos, elige las sucursales a menos de `SEPA_RADIUS_KM` (15 km) de casa y guarda su catálogo (productos con EAN) y precios del día en `sepa_*`. Se puede correr a mano desde la pestaña *Actions*.
+
+Configuración en GitHub (*Settings → Secrets and variables → Actions*):
+- Secret `DATABASE_URL`: la misma cadena de Neon que usa Vercel.
+- Variables `HOME_LAT` y `HOME_LON`: coordenadas de casa (no se guardan en el código).
+- Variable opcional `SEPA_RADIUS_KM`.
+
+En la validación de tickets, cada producto se puede buscar en el catálogo de Precios Claros (búsqueda aproximada con `pg_trgm`) para asignarle su EAN. Así queda vinculado aunque el súper no imprima el código.
+
 ## Base de datos
 
 El esquema está en `src/db/schema.ts`. Al cambiarlo: `npm run db:generate` (crea la migración en `drizzle/`) y `npm run db:migrate`.

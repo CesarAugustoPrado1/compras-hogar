@@ -5,7 +5,7 @@ import { logout } from "./login/actions";
 
 const modules = [
   { name: "Tickets", description: "Cargar fotos de tickets, normalizar y validar.", status: "Disponible", href: "/tickets" },
-  { name: "Precios", description: "Comparar supermercados cercanos contra lo que compramos.", status: "Más adelante" },
+  { name: "Precios", description: "Comparar supermercados cercanos contra lo que compramos.", status: "Primeros pasos", href: "/precios" },
   { name: "Análisis", description: "Gasto, consumo y patrones de la familia.", status: "Más adelante" },
   { name: "Predicción", description: "Qué comprar, cuándo y dónde, con escenarios.", status: "Más adelante" },
 ];

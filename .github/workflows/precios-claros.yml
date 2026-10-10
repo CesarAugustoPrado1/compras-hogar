@@ -1,0 +1,50 @@
+# Importa todos los días los precios de Precios Claros (base SEPA) de las sucursales
+# cercanas a casa. También se puede correr a mano desde la pestaña Actions.
+#
+# Configuración (Settings → Secrets and variables → Actions):
+#   Secret   DATABASE_URL     cadena de conexión de Neon
+#   Variable HOME_LAT         latitud de casa, ej. -34.6
+#   Variable HOME_LON         longitud de casa, ej. -58.8
+#   Variable SEPA_RADIUS_KM   opcional, radio en km (15)
+name: Precios Claros
+
+on:
+  schedule:
+    - cron: "17 12 * * *" # 9:17 en Argentina
+  workflow_dispatch:
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Descargar el archivo del día
+        run: npx tsx scripts/sepa/download.ts "$RUNNER_TEMP/sepa.zip" | tee "$RUNNER_TEMP/download.log"
+
+      - name: Descomprimir (es un zip de zips)
+        run: |
+          mkdir -p "$RUNNER_TEMP/sepa"
+          unzip -q "$RUNNER_TEMP/sepa.zip" -d "$RUNNER_TEMP/sepa"
+          rm "$RUNNER_TEMP/sepa.zip"
+          while z=$(find "$RUNNER_TEMP/sepa" -name '*.zip' -print -quit) && [ -n "$z" ]; do
+            unzip -q -o "$z" -d "${z%.zip}" && rm "$z"
+          done
+          find "$RUNNER_TEMP/sepa" -maxdepth 3 | head -20 || true
+          du -sh "$RUNNER_TEMP/sepa"
+
+      - name: Importar sucursales cercanas
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          HOME_LAT: ${{ vars.HOME_LAT }}
+          HOME_LON: ${{ vars.HOME_LON }}
+          SEPA_RADIUS_KM: ${{ vars.SEPA_RADIUS_KM || '15' }}
+        run: |
+          export SEPA_SOURCE=$(grep -o 'source=.*' "$RUNNER_TEMP/download.log" | cut -d= -f2-)
+          npx tsx scripts/sepa/import.ts "$RUNNER_TEMP/sepa"

@@ -7,6 +7,7 @@ import { stores, ticketImages, ticketItems, tickets, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/categories";
 import { formatDate, toLocalInput } from "@/lib/dates";
+import { sepaByEans } from "@/lib/sepa";
 import { TicketEditor } from "./ticket-editor";
 
 // "Reintentar lectura" vuelve a llamar a la IA.
@@ -55,6 +56,8 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
       : Promise.resolve([]),
   ]);
 
+  const sepa = await sepaByEans([...new Set(items.map((i) => i.ean).filter((e): e is string => Boolean(e)))]);
+
   return (
     <>
       <div>
@@ -88,6 +91,7 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
         images={images.map((img) => `/fotos/${img.path}`)}
         stores={storeRows}
         categories={[...CATEGORIES]}
+        sepa={Object.fromEntries(sepa)}
         initial={{
           storeId: ticket.storeId,
           branch: ticket.branch,
