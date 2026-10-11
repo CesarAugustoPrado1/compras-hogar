@@ -13,7 +13,12 @@ export default function PricesPage() {
       <Link href="/" className="text-sm text-neutral-500">
         ← Inicio
       </Link>
-      <h1 className="text-2xl font-semibold">Precios</h1>
+      <div className="flex items-baseline justify-between gap-4">
+        <h1 className="text-2xl font-semibold">Precios</h1>
+        <Link href="/precios/diagnostico" className="text-sm text-neutral-500 underline">
+          Diagnóstico
+        </Link>
+      </div>
       <Suspense fallback={<p className="text-sm text-neutral-500">Cargando…</p>}>
         <Branches />
       </Suspense>
