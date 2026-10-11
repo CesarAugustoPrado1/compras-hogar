@@ -48,12 +48,17 @@ async function Results() {
   await connection();
   await getCurrentUser();
 
-  const [control, ckan] = await Promise.all([
+  const [control, primary, mirror] = await Promise.all([
     probe("Internet en general (google.com)", "https://www.google.com", "HEAD"),
-    probe("Portal de datos abiertos (lista de archivos)", `${CKAN}/api/3/action/package_show?id=sepa-precios`),
+    probe("datos.produccion.gob.ar (lista de archivos)", `${CKAN}/api/3/action/package_show?id=sepa-precios`),
+    probe(
+      "datos.gob.ar (lista de archivos, alternativa)",
+      "https://datos.gob.ar/api/3/action/package_show?id=produccion-precios-claros---base-sepa",
+    ),
   ]);
+  const ckan = primary.ok ? primary : mirror;
 
-  const probes: Probe[] = [control, ckan];
+  const probes: Probe[] = [control, primary, mirror];
   let latest: { name?: string; url: string; when: string; size?: number } | null = null;
 
   if (ckan.ok && ckan.res) {
