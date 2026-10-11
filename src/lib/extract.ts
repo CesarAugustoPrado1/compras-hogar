@@ -103,7 +103,7 @@ const SYSTEM = `Leés fotos de tickets de supermercados de Argentina y devolvés
 - No son renglones: subtotales, el pago (efectivo, tarjeta), el vuelto, el redondeo, ni los impuestos informados (IVA contenido, etc.). total es el TOTAL impreso.
 - Las fechas suelen venir como DD-MM-AA (09-10-26 es 9 de octubre de 2026).
 - productName, brand, presentation y category son tu mejor interpretación del producto (expandí abreviaturas: "QSO RALL LS 150G" → Queso rallado, La Serenísima, 150 g). Si no estás seguro, dejalos vacíos ("") en vez de adivinar.
-- Lo que no se lea o no cierre (por ejemplo, la suma de renglones no coincide con el total) va en notes.`;
+- notes es solo para lo que una persona tiene que revisar: partes ilegibles, interpretaciones dudosas o cosas que no cierran (por ejemplo, la suma de renglones no da el total). No repitas lo que está bien (pago, vuelto, que la suma coincide). Si no hay nada que revisar, dejalo vacío.`;
 
 let client: Anthropic | undefined;
 
