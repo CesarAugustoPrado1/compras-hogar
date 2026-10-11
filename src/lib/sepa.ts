@@ -26,14 +26,14 @@ const normalize = (text: string) =>
 
 // Precio más bajo del día entre las sucursales cercanas, para cada EAN.
 const bestPriceColumns = sql`
-  (select min(sp.price) from sepa_prices sp where sp.ean = ${sepaProducts.ean}) as best_price,
-  (select sb.chain from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
+  (select min(sp.price) from sepa_current_prices sp where sp.ean = ${sepaProducts.ean}) as best_price,
+  (select sb.chain from sepa_current_prices sp join sepa_branches sb on sb.id = sp.branch_id
      where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_chain,
-  (select sp.ref_price from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
+  (select sp.ref_price from sepa_current_prices sp join sepa_branches sb on sb.id = sp.branch_id
      where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_ref_price,
-  (select sp.ref_unit from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
+  (select sp.ref_unit from sepa_current_prices sp join sepa_branches sb on sb.id = sp.branch_id
      where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_ref_unit,
-  (select count(*)::int from sepa_prices sp where sp.ean = ${sepaProducts.ean}) as branches`;
+  (select count(*)::int from sepa_current_prices sp where sp.ean = ${sepaProducts.ean}) as branches`;
 
 type RawMatch = {
   ean: string;

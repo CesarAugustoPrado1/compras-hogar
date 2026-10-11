@@ -57,6 +57,20 @@
       "when": 1791726327750,
       "tag": "0007_precio_por_kilo_y_dolar",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791728216025,
+      "tag": "0008_historico_precios",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791728221491,
+      "tag": "0009_borrar_precios_actuales",
+      "breakpoints": true
     }
   ]
 }

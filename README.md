@@ -40,7 +40,7 @@ Las fotos se guardan en Vercel Blob **privado** y solo se ven con sesión inicia
 
 ## Precios Claros (base SEPA)
 
-Todos los días, la GitHub Action **Precios Claros** (`.github/workflows/precios-claros.yml`) descarga la base SEPA del portal de datos abiertos, elige las sucursales a menos de `SEPA_RADIUS_KM` (15 km) de casa y guarda su catálogo (productos con EAN) y precios del día en `sepa_*`. Se puede correr a mano desde la pestaña *Actions*.
+Todos los días, la GitHub Action **Precios Claros** (`.github/workflows/precios-claros.yml`) descarga la base SEPA del portal de datos abiertos, elige las sucursales a menos de `SEPA_RADIUS_KM` (15 km) de casa y guarda su catálogo (productos con EAN) y el **histórico de precios** en `sepa_price_history`: una fila por período en que un precio (con sus promos) estuvo vigente, que se agrega solo cuando algo cambia. Los precios de hoy están en la vista `sepa_current_prices`. Se puede correr a mano desde la pestaña *Actions*.
 
 Configuración en GitHub (*Settings → Secrets and variables → Actions*):
 - Secret `DATABASE_URL`: la misma cadena de Neon que usa Vercel.

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { asc, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { sepaBranches } from "@/db/schema";
+import { sepaBranches, sepaPriceHistory } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { formatDate } from "@/lib/dates";
 import { lastSepaImport } from "@/lib/sepa";
@@ -23,7 +23,7 @@ export default function PricesPage() {
 
 async function Branches() {
   await getCurrentUser();
-  const [last, branches] = await Promise.all([
+  const [last, branches, [history]] = await Promise.all([
     lastSepaImport(),
     db
       .select({
@@ -33,10 +33,18 @@ async function Branches() {
         address: sepaBranches.address,
         locality: sepaBranches.locality,
         distanceKm: sepaBranches.distanceKm,
-        products: sql<number>`(select count(*)::int from sepa_prices sp where sp.branch_id = ${sepaBranches.id})`,
+        products: sql<number>`(select count(*)::int from sepa_current_prices sp where sp.branch_id = ${sepaBranches.id})`,
       })
       .from(sepaBranches)
+      .where(eq(sepaBranches.active, true))
       .orderBy(asc(sepaBranches.distanceKm)),
+    db
+      .select({
+        rows: sql<number>`count(*)::int`,
+        since: sql<string | null>`min(${sepaPriceHistory.validFrom})::text`,
+        days: sql<number>`(select count(*)::int from sepa_imports)`,
+      })
+      .from(sepaPriceHistory),
   ]);
 
   if (!last) {
@@ -52,8 +60,15 @@ async function Branches() {
     <>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
         Datos de Precios Claros del {last.dataDate ?? "—"} (importados el {formatDate(last.createdAt)}):{" "}
-        {last.branches} sucursales cercanas, {last.products.toLocaleString("es-AR")} productos.
+        {last.branches} sucursales cercanas, {last.products.toLocaleString("es-AR")} productos,{" "}
+        {last.changes.toLocaleString("es-AR")} precios nuevos o modificados respecto del día anterior.
       </p>
+      {history.since && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Histórico desde el {history.since}: {history.days} importaciones,{" "}
+          {history.rows.toLocaleString("es-AR")} registros de precio (solo se guarda cuando un precio cambia).
+        </p>
+      )}
       <ul className="divide-y divide-neutral-200 rounded-xl border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
         {branches.map((b) => (
           <li key={b.id} className="flex items-center justify-between gap-4 p-3">

@@ -140,6 +140,8 @@ export const sepaBranches = pgTable("sepa_branches", {
   lat: doublePrecision("lat").notNull(),
   lon: doublePrecision("lon").notNull(),
   distanceKm: doublePrecision("distance_km").notNull(),
+  // false si quedó fuera del radio: se conserva por su histórico de precios.
+  active: boolean("active").notNull().default(true),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -158,8 +160,11 @@ export const sepaProducts = pgTable(
   (t) => [index("sepa_products_search_idx").using("gin", sql`${t.searchText} gin_trgm_ops`)],
 );
 
-export const sepaPrices = pgTable(
-  "sepa_prices",
+// Histórico de precios: una fila por período en que un precio (y sus promos) estuvo vigente
+// en una sucursal. Solo se agrega una fila cuando algo cambia. Vigente: valid_to null.
+// Los precios actuales se consultan con la vista sepa_current_prices.
+export const sepaPriceHistory = pgTable(
+  "sepa_price_history",
   {
     branchId: text("branch_id")
       .notNull()
@@ -174,9 +179,13 @@ export const sepaPrices = pgTable(
     promo1Text: text("promo1_text"),
     promo2Price: numeric("promo2_price", { precision: 12, scale: 2, mode: "number" }),
     promo2Text: text("promo2_text"),
-    date: date("date").notNull(),
+    validFrom: date("valid_from").notNull(), // primer día con este precio
+    validTo: date("valid_to"), // primer día en que ya no estaba (null: vigente)
   },
-  (t) => [primaryKey({ columns: [t.branchId, t.ean] }), index("sepa_prices_ean_idx").on(t.ean)],
+  (t) => [
+    primaryKey({ columns: [t.branchId, t.ean, t.validFrom] }),
+    index("sepa_price_history_ean_idx").on(t.ean, t.validFrom),
+  ],
 );
 
 export const sepaImports = pgTable("sepa_imports", {
@@ -186,6 +195,7 @@ export const sepaImports = pgTable("sepa_imports", {
   branches: integer("branches").notNull(),
   products: integer("products").notNull(),
   prices: integer("prices").notNull(),
+  changes: integer("changes").notNull().default(0), // precios nuevos o modificados
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
