@@ -43,6 +43,13 @@
       "when": 1791672408078,
       "tag": "0005_precios_claros",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791725811046,
+      "tag": "0006_consumo_ia",
+      "breakpoints": true
     }
   ]
 }

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { stores, ticketImages, ticketItems, tickets, users } from "@/db/schema";
+import { aiUsage, stores, ticketImages, ticketItems, tickets, users } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { CATEGORIES } from "@/lib/categories";
 import { formatDate, toLocalInput } from "@/lib/dates";
@@ -34,7 +34,7 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id));
   if (!ticket) notFound();
 
-  const [images, items, storeRows, validator, duplicates] = await Promise.all([
+  const [images, items, storeRows, validator, duplicates, [aiCost]] = await Promise.all([
     db.select().from(ticketImages).where(eq(ticketImages.ticketId, id)).orderBy(asc(ticketImages.position)),
     db.select().from(ticketItems).where(eq(ticketItems.ticketId, id)).orderBy(asc(ticketItems.position)),
     db.select({ id: stores.id, name: stores.name }).from(stores).orderBy(asc(stores.name)),
@@ -54,6 +54,10 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
             ),
           )
       : Promise.resolve([]),
+    db
+      .select({ usd: sql<string | null>`sum(${aiUsage.costUsd})`, calls: sql<number>`count(*)::int` })
+      .from(aiUsage)
+      .where(eq(aiUsage.ticketId, id)),
   ]);
 
   const sepa = await sepaByEans([...new Set(items.map((i) => i.ean).filter((e): e is string => Boolean(e)))]);
@@ -67,6 +71,12 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
             ? `Validado por ${validator[0]?.name ?? "—"} el ${formatDate(ticket.validatedAt)}`
             : "Por validar: revisá cada renglón contra la foto."}
         </p>
+        {aiCost.calls > 0 && aiCost.usd !== null && (
+          <p className="text-xs text-neutral-500">
+            Lectura con IA: US$ {Number(aiCost.usd).toFixed(3)}
+            {aiCost.calls > 1 && ` (${aiCost.calls} intentos)`}
+          </p>
+        )}
       </div>
       {duplicates.length > 0 && (
         <p className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-200">

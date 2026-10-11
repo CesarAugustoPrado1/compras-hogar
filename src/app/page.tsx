@@ -52,6 +52,9 @@ async function UserBadge() {
   return (
     <form action={logout} className="flex items-center gap-3 text-sm">
       <span>Hola, {user.name}</span>
+      <Link href="/consumo" className="text-neutral-500 underline">
+        Consumo IA
+      </Link>
       <Link href="/usuarios" className="text-neutral-500 underline">
         Usuarios
       </Link>

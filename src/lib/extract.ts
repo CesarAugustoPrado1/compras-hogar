@@ -2,6 +2,9 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
+import { db } from "@/db";
+import { aiUsage } from "@/db/schema";
+import { costUsd, type TokenUsage } from "./ai-pricing";
 import { CATEGORIES } from "./categories";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
@@ -97,10 +100,88 @@ const SYSTEM = `Leés fotos de tickets de supermercados de Argentina y devolvés
 
 let client: Anthropic | undefined;
 
+// Tokens por modelo. Si hubo fallback, cada modelo que corrió figura en usage.iterations.
+function usageByModel(message: Anthropic.Beta.BetaMessage): TokenUsage[] {
+  const u = message.usage;
+  const iterations = u.iterations ?? [];
+  if (iterations.length) {
+    return iterations.map((it) => ({
+      model: ("model" in it && it.model) || message.model,
+      inputTokens: it.input_tokens,
+      outputTokens: it.output_tokens,
+      cacheWriteTokens: it.cache_creation_input_tokens ?? 0,
+      cacheReadTokens: it.cache_read_input_tokens ?? 0,
+    }));
+  }
+  return [
+    {
+      model: message.model,
+      inputTokens: u.input_tokens,
+      outputTokens: u.output_tokens,
+      cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
+      cacheReadTokens: u.cache_read_input_tokens ?? 0,
+    },
+  ];
+}
+
+// Registra el consumo de cada llamada, salga bien o mal. Nunca hace fallar la lectura.
+async function recordUsage(
+  context: { ticketId: number; userId: number },
+  started: number,
+  message: Anthropic.Beta.BetaMessage | null,
+  error: string | null,
+) {
+  try {
+    const rows = message
+      ? usageByModel(message)
+      : [{ model: MODEL, inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 }];
+    await db.insert(aiUsage).values(
+      rows.map((usage) => ({
+        purpose: "lectura_ticket",
+        ticketId: context.ticketId,
+        userId: context.userId,
+        ...usage,
+        costUsd: costUsd(usage),
+        ok: !error,
+        error,
+        durationMs: Date.now() - started,
+      })),
+    );
+  } catch (e) {
+    console.error("No se pudo registrar el consumo de IA", e);
+  }
+}
+
 export async function extractTicket(
   images: { data: Buffer; mediaType: "image/jpeg" | "image/png" | "image/webp" }[],
   knownStores: string[],
+  context: { ticketId: number; userId: number },
 ): Promise<ExtractedTicket> {
+  const started = Date.now();
+  let response: Awaited<ReturnType<typeof requestExtraction>> | null = null;
+  try {
+    response = await requestExtraction(images, knownStores);
+  } catch (error) {
+    // Error antes de tener respuesta (ej. pedido inválido): no se cobra, pero queda registrado.
+    await recordUsage(context, started, null, error instanceof Error ? error.message : String(error));
+    throw error;
+  }
+
+  const problem =
+    response.stop_reason === "refusal"
+      ? "El modelo no pudo procesar las fotos."
+      : response.stop_reason === "max_tokens" || !response.parsed_output
+        ? "La lectura del ticket quedó incompleta."
+        : null;
+  await recordUsage(context, started, response, problem);
+  if (problem) throw new Error(problem);
+  return cleanTicket(response.parsed_output!);
+}
+
+async function requestExtraction(
+  images: { data: Buffer; mediaType: "image/jpeg" | "image/png" | "image/webp" }[],
+  knownStores: string[],
+) {
   client ??= new Anthropic();
   // Streaming: con tickets largos la respuesta puede tardar, y el SDK lo exige para este max_tokens.
   const stream = client.beta.messages.stream({
@@ -132,13 +213,5 @@ export async function extractTicket(
       },
     ],
   });
-  const response = await stream.finalMessage();
-
-  if (response.stop_reason === "refusal") {
-    throw new Error("El modelo no pudo procesar las fotos.");
-  }
-  if (response.stop_reason === "max_tokens" || !response.parsed_output) {
-    throw new Error("La lectura del ticket quedó incompleta.");
-  }
-  return cleanTicket(response.parsed_output);
+  return stream.finalMessage();
 }

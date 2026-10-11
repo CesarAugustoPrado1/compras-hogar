@@ -80,7 +80,7 @@ export function splitCodes(ean: string | null, storeCode: string | null) {
 }
 
 // Lee las fotos del ticket con IA y reemplaza sus renglones por lo extraído.
-export async function runExtraction(ticketId: number) {
+export async function runExtraction(ticketId: number, userId: number) {
   const images = await db
     .select()
     .from(ticketImages)
@@ -99,6 +99,7 @@ export async function runExtraction(ticketId: number) {
     const extracted = await extractTicket(
       files,
       storeRows.map((s) => s.name),
+      { ticketId, userId },
     );
 
     const store = storeRows.find(

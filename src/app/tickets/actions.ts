@@ -50,13 +50,13 @@ export async function createTicket(_prev: UploadState, formData: FormData): Prom
     };
   }
 
-  await runExtraction(ticket.id);
+  await runExtraction(ticket.id, user.id);
   redirect(`/tickets/${ticket.id}`);
 }
 
 export async function retryExtraction(ticketId: number) {
-  await getCurrentUser();
-  await runExtraction(ticketId);
+  const user = await getCurrentUser();
+  await runExtraction(ticketId, user.id);
   redirect(`/tickets/${ticketId}`);
 }
 

@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   doublePrecision,
   index,
@@ -178,3 +179,28 @@ export const sepaImports = pgTable("sepa_imports", {
   prices: integer("prices").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Consumo de IA: un registro por cada llamada (lecturas de tickets, etc.), con sus
+// tokens y el costo estimado en dólares según la lista de precios (src/lib/ai-pricing.ts).
+export const aiUsage = pgTable(
+  "ai_usage",
+  {
+    id: serial("id").primaryKey(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    purpose: text("purpose").notNull(), // ej. "lectura_ticket"
+    userId: integer("user_id").references(() => users.id),
+    // Si el ticket se borra, el gasto queda registrado igual.
+    ticketId: integer("ticket_id").references(() => tickets.id, { onDelete: "set null" }),
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    cacheWriteTokens: integer("cache_write_tokens").notNull().default(0),
+    cacheReadTokens: integer("cache_read_tokens").notNull().default(0),
+    costUsd: numeric("cost_usd", { precision: 12, scale: 6, mode: "number" }), // null si el modelo no está en la lista
+    ok: boolean("ok").notNull(),
+    error: text("error"),
+    durationMs: integer("duration_ms"),
+  },
+  (t) => [index("ai_usage_created_idx").on(t.createdAt)],
+);
