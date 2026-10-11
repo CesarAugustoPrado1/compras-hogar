@@ -32,10 +32,13 @@ jobs:
           cache: npm
       - run: npm ci
 
-      - name: Descargar el archivo del día
+      - name: Descargar el archivo del día (portal oficial)
+        id: descarga
+        continue-on-error: true
         run: npx tsx scripts/sepa/download.ts "$RUNNER_TEMP/sepa.zip" | tee "$RUNNER_TEMP/download.log"
 
       - name: Descomprimir (es un zip de zips)
+        if: steps.descarga.outcome == 'success'
         run: |
           mkdir -p "$RUNNER_TEMP/sepa"
           unzip -q "$RUNNER_TEMP/sepa.zip" -d "$RUNNER_TEMP/sepa"
@@ -46,7 +49,8 @@ jobs:
           find "$RUNNER_TEMP/sepa" -maxdepth 3 | head -20 || true
           du -sh "$RUNNER_TEMP/sepa"
 
-      - name: Importar sucursales cercanas
+      - name: Importar sucursales cercanas (portal oficial)
+        if: steps.descarga.outcome == 'success'
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           HOME_LAT: ${{ vars.HOME_LAT }}
@@ -55,3 +59,16 @@ jobs:
         run: |
           export SEPA_SOURCE=$(grep -o 'source=.*' "$RUNNER_TEMP/download.log" | cut -d= -f2-)
           npx tsx scripts/sepa/import.ts "$RUNNER_TEMP/sepa"
+
+      # Si el portal oficial no responde: copia de Coto y Carrefour publicada por
+      # changuito-sepa. Si sus datos son más viejos que lo ya importado, no cambia nada.
+      - name: Importar desde la copia alternativa (portal caído)
+        if: steps.descarga.outcome != 'success'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          HOME_LAT: ${{ vars.HOME_LAT }}
+          HOME_LON: ${{ vars.HOME_LON }}
+          SEPA_RADIUS_KM: ${{ vars.SEPA_RADIUS_KM || '15' }}
+        run: |
+          echo "::warning::El portal de datos abiertos no respondió; se usa la copia alternativa (solo Coto y Carrefour)."
+          npx tsx scripts/sepa/mirror.ts

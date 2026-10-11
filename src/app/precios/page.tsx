@@ -68,6 +68,12 @@ async function Branches() {
         {last.branches} sucursales cercanas, {last.products.toLocaleString("es-AR")} productos,{" "}
         {last.changes.toLocaleString("es-AR")} precios nuevos o modificados respecto del día anterior.
       </p>
+      {last.source?.includes("copia alternativa") && (
+        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          El portal oficial de Precios Claros no responde: estos datos vienen de una copia que publica solo Coto y
+          Carrefour. Cuando el portal vuelva, la importación diaria pasa sola a los datos oficiales.
+        </p>
+      )}
       {history.since && (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Histórico desde el {history.since}: {history.days} importaciones,{" "}

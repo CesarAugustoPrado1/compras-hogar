@@ -42,6 +42,8 @@ Las fotos se guardan en Vercel Blob **privado** y solo se ven con sesión inicia
 
 Todos los días, la GitHub Action **Precios Claros** (`.github/workflows/precios-claros.yml`) descarga la base SEPA del portal de datos abiertos, elige las sucursales a menos de `SEPA_RADIUS_KM` (15 km) de casa y guarda su catálogo (productos con EAN) y el **histórico de precios** en `sepa_price_history`: una fila por período en que un precio (con sus promos) estuvo vigente, que se agrega solo cuando algo cambia. Los precios de hoy están en la vista `sepa_current_prices`. Se puede correr a mano desde la pestaña *Actions*.
 
+Si el portal oficial no responde (pasa seguido), la Action usa una copia alternativa con los precios de Coto y Carrefour que republica el proyecto [changuito-sepa](https://github.com/NahuelJV/changuito-sepa) (`scripts/sepa/mirror.ts`); una copia más vieja que lo ya importado no cambia nada.
+
 Configuración en GitHub (*Settings → Secrets and variables → Actions*):
 - Secret `DATABASE_URL`: la misma cadena de Neon que usa Vercel.
 - Variables `HOME_LAT` y `HOME_LON`: coordenadas de casa (no se guardan en el código).
