@@ -66,7 +66,9 @@ async function Branches() {
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
         Datos de Precios Claros del {last.dataDate ?? "—"} (importados el {formatDate(last.createdAt)}):{" "}
         {last.branches} sucursales cercanas, {last.products.toLocaleString("es-AR")} productos,{" "}
-        {last.changes.toLocaleString("es-AR")} precios nuevos o modificados respecto del día anterior.
+        {history.days > 1
+          ? `${last.changes.toLocaleString("es-AR")} precios nuevos o modificados respecto de la importación anterior.`
+          : `${last.prices.toLocaleString("es-AR")} precios.`}
       </p>
       {last.source?.includes("copia alternativa") && (
         <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -86,7 +88,14 @@ async function Branches() {
             <div>
               <p className="font-medium">{b.chain}</p>
               <p className="text-sm text-neutral-500">
-                {[b.name, b.address, b.locality].filter(Boolean).join(" · ")}
+                {[
+                  b.name,
+                  b.address,
+                  // La dirección a veces ya incluye la localidad.
+                  b.locality && !b.address?.toLowerCase().includes(b.locality.toLowerCase()) ? b.locality : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
             <div className="text-right text-sm">

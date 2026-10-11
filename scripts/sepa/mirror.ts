@@ -60,7 +60,10 @@ async function main() {
       pricesById.set(id, prices);
       candidates.push({
         id,
-        chain: s.bandera,
+        // "Express" → "Carrefour Express"; "COTO CICSA" ya nombra la cadena.
+        chain: s.bandera.toLowerCase().includes(s.cadena.toLowerCase())
+          ? s.bandera
+          : `${s.cadena.charAt(0)}${s.cadena.slice(1).toLowerCase()} ${s.bandera}`,
         company: s.cadena,
         name: s.nombre,
         address: s.direccion,
