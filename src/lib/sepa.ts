@@ -11,6 +11,8 @@ export type SepaMatch = {
   unit: string | null;
   bestPrice: number | null;
   bestChain: string | null;
+  bestRefPrice: number | null; // precio por kg/l en esa misma sucursal
+  bestRefUnit: string | null;
   branches: number;
 };
 
@@ -27,6 +29,10 @@ const bestPriceColumns = sql`
   (select min(sp.price) from sepa_prices sp where sp.ean = ${sepaProducts.ean}) as best_price,
   (select sb.chain from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
      where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_chain,
+  (select sp.ref_price from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
+     where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_ref_price,
+  (select sp.ref_unit from sepa_prices sp join sepa_branches sb on sb.id = sp.branch_id
+     where sp.ean = ${sepaProducts.ean} order by sp.price, sb.distance_km limit 1) as best_ref_unit,
   (select count(*)::int from sepa_prices sp where sp.ean = ${sepaProducts.ean}) as branches`;
 
 type RawMatch = {
@@ -37,6 +43,8 @@ type RawMatch = {
   unit: string | null;
   best_price: string | null;
   best_chain: string | null;
+  best_ref_price: string | null;
+  best_ref_unit: string | null;
   branches: number;
 };
 
@@ -48,6 +56,8 @@ const toMatch = (r: RawMatch): SepaMatch => ({
   unit: r.unit,
   bestPrice: r.best_price === null ? null : Number(r.best_price),
   bestChain: r.best_chain,
+  bestRefPrice: r.best_ref_price === null ? null : Number(r.best_ref_price),
+  bestRefUnit: r.best_ref_unit,
   branches: r.branches,
 });
 

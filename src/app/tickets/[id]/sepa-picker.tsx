@@ -20,6 +20,7 @@ export function SepaInfo({ match }: { match: SepaMatch }) {
         <>
           {" "}
           — desde <strong>{money(match.bestPrice)}</strong> en {match.bestChain}
+          {match.bestRefPrice !== null && ` (${money(match.bestRefPrice)} por ${match.bestRefUnit ?? "kg"})`}
         </>
       )}
     </span>
@@ -85,6 +86,7 @@ export function SepaPicker({
                 <span className="block text-xs text-neutral-500">
                   EAN {m.ean}
                   {m.bestPrice !== null && ` · desde ${money(m.bestPrice)} en ${m.bestChain} (${m.branches} suc.)`}
+                  {m.bestRefPrice !== null && ` · ${money(m.bestRefPrice)} por ${m.bestRefUnit ?? "kg"}`}
                 </span>
               </button>
             </li>

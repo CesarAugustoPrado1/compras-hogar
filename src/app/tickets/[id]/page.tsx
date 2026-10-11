@@ -119,6 +119,7 @@ async function TicketLoader({ params }: { params: PageProps<"/tickets/[id]">["pa
             unitPrice: i.unitPrice,
             discount: i.discount,
             lineTotal: i.lineTotal,
+            printedRefPrice: i.printedRefPrice,
             productId: i.productId,
             productName: i.productName,
             brand: i.brand,

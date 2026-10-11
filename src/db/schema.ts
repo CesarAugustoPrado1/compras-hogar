@@ -40,6 +40,9 @@ export const products = pgTable("products", {
   name: text("name").notNull(),
   brand: text("brand"),
   presentation: text("presentation"), // ej.: "150 g", "1 l", "pack x 6"
+  // Contenido neto por unidad en kg o l (de la presentación), para comparar precio por kilo.
+  contentAmount: numeric("content_amount", { precision: 12, scale: 4, mode: "number" }),
+  contentUnit: text("content_unit"), // "kg" | "l"
   category: text("category"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -114,6 +117,12 @@ export const ticketItems = pgTable("ticket_items", {
   presentation: text("presentation"),
   category: text("category"),
   productId: integer("product_id").references(() => products.id),
+  // Precio por kg o litro: calculado (precio por peso, o precio del envase / contenido neto)
+  // o, si no se puede, el que imprime el ticket.
+  contentAmount: numeric("content_amount", { precision: 12, scale: 4, mode: "number" }),
+  refPrice: numeric("ref_price", { precision: 12, scale: 2, mode: "number" }),
+  refUnit: text("ref_unit"), // "kg" | "l"
+  printedRefPrice: numeric("printed_ref_price", { precision: 12, scale: 2, mode: "number" }),
 });
 
 // ---------------------------------------------------------------------------
@@ -201,6 +210,15 @@ export const aiUsage = pgTable(
     ok: boolean("ok").notNull(),
     error: text("error"),
     durationMs: integer("duration_ms"),
+    usdArs: numeric("usd_ars", { precision: 12, scale: 2, mode: "number" }), // dólar tarjeta del día
   },
   (t) => [index("ai_usage_created_idx").on(t.createdAt)],
 );
+
+// Cotización diaria del dólar tarjeta (pesos por dólar), para pasar a pesos los gastos en USD.
+export const exchangeRates = pgTable("exchange_rates", {
+  date: date("date").primaryKey(),
+  usdArs: numeric("usd_ars", { precision: 12, scale: 2, mode: "number" }).notNull(),
+  source: text("source").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});

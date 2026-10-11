@@ -10,7 +10,13 @@ import { fromLocalInput } from "@/lib/dates";
 import { isValidGtin } from "@/lib/gtin";
 import { searchSepa } from "@/lib/sepa";
 import { deleteFiles, saveFile } from "@/lib/storage";
-import { matchKnownProducts, rememberAlias, resolveProduct, runExtraction } from "@/lib/tickets";
+import {
+  matchKnownProducts,
+  rememberAlias,
+  resolveProduct,
+  runExtraction,
+  withRefPrice,
+} from "@/lib/tickets";
 
 const MAX_PHOTOS = 8;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -80,6 +86,7 @@ const TicketInput = z.object({
       unitPrice: nullableNumber,
       discount: nullableNumber,
       lineTotal: nullableNumber,
+      printedRefPrice: nullableNumber,
       productId: z.number().int().nullable(),
       productName: z.string().nullable(),
       brand: z.string().nullable(),
@@ -139,7 +146,7 @@ export async function saveTicket(
   await db.delete(ticketItems).where(eq(ticketItems.ticketId, ticketId));
   if (items.length) {
     items = items.map((i) => (i.kind === "producto" ? i : { ...i, productId: null }));
-    await db.insert(ticketItems).values(items);
+    await db.insert(ticketItems).values(items.map(withRefPrice));
   }
   await db
     .update(tickets)

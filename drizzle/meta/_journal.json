@@ -50,6 +50,13 @@
       "when": 1791725811046,
       "tag": "0006_consumo_ia",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791726327750,
+      "tag": "0007_precio_por_kilo_y_dolar",
+      "breakpoints": true
     }
   ]
 }

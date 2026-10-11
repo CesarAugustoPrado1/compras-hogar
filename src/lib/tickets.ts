@@ -4,10 +4,36 @@ import { db } from "@/db";
 import { productAliases, products, stores, ticketImages, ticketItems, tickets } from "@/db/schema";
 import { fromLocalInput } from "./dates";
 import { isValidGtin } from "./gtin";
+import { parseContent, refPrice } from "./units";
 import { extractTicket } from "@/lib/extract";
 import { readFileBytes } from "./storage";
 
 type NewItem = typeof ticketItems.$inferInsert;
+
+// Completa contenido neto y precio por kg/l de cada renglón de producto.
+export function withRefPrice<T extends NewItem>(item: T): T {
+  if (item.kind !== "producto") return { ...item, contentAmount: null, refPrice: null, refUnit: null };
+  const ref = refPrice({
+    quantity: item.quantity ?? 1,
+    unit: item.unit ?? "u",
+    unitPrice: item.unitPrice ?? null,
+    lineTotal: item.lineTotal ?? null,
+    presentation: item.presentation ?? null,
+    printedRefPrice: item.printedRefPrice ?? null,
+  });
+  return {
+    ...item,
+    contentAmount: ref?.content?.amount ?? null,
+    refPrice: ref?.price ?? null,
+    refUnit: ref?.unit ?? null,
+  };
+}
+
+// Contenido neto de un producto envasado, para guardarlo en el catálogo.
+export function productContent(presentation: string | null, unit: "u" | "kg" | "l") {
+  const content = unit === "u" ? parseContent(presentation) : null;
+  return { contentAmount: content?.amount ?? null, contentUnit: content?.unit ?? null };
+}
 
 // Completa cada renglón con el producto ya conocido: primero por EAN, después por el
 // código interno del súper (visto en tickets validados) y por último por cómo lo nombra
@@ -126,6 +152,7 @@ export async function runExtraction(ticketId: number, userId: number) {
         unitPrice: item.unitPrice,
         discount: item.discount,
         lineTotal: item.lineTotal,
+        printedRefPrice: item.printedRefPrice,
         productName: item.productName,
         brand: item.brand,
         presentation: item.presentation,
@@ -134,7 +161,7 @@ export async function runExtraction(ticketId: number, userId: number) {
     );
 
     await db.delete(ticketItems).where(eq(ticketItems.ticketId, ticketId));
-    if (items.length) await db.insert(ticketItems).values(items);
+    if (items.length) await db.insert(ticketItems).values(items.map(withRefPrice));
     await db
       .update(tickets)
       .set({
@@ -162,6 +189,7 @@ export async function runExtraction(ticketId: number, userId: number) {
 }
 
 type ValidatedItem = {
+  unit: "u" | "kg" | "l";
   ean: string | null;
   productId: number | null;
   productName: string;
@@ -177,6 +205,7 @@ export async function resolveProduct(item: ValidatedItem): Promise<number> {
     brand: item.brand,
     presentation: item.presentation,
     category: item.category,
+    ...productContent(item.presentation, item.unit),
   };
 
   if (item.ean) {

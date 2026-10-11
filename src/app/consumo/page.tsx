@@ -16,6 +16,9 @@ const usd = (v: number | null) =>
         maximumFractionDigits: v < 1 ? 3 : 2,
       }).format(v);
 
+const ars = (v: number) =>
+  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(v);
+
 const tokens = (n: number) => new Intl.NumberFormat("es-AR").format(n);
 
 export default function UsagePage() {
@@ -27,7 +30,8 @@ export default function UsagePage() {
       <h1 className="text-2xl font-semibold">Consumo de IA</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
         Costo estimado de cada lectura con Claude, calculado con los tokens que informa la API y la lista de precios
-        en dólares. La factura real está en console.anthropic.com.
+        en dólares. Los pesos usan el dólar tarjeta del día de cada lectura (* si a alguna le faltó la
+        cotización). La factura real está en console.anthropic.com.
       </p>
       <Suspense fallback={<p className="text-sm text-neutral-500">Cargando…</p>}>
         <Usage />
@@ -50,6 +54,8 @@ async function Usage() {
         failed: sql<number>`count(*) filter (where not ${aiUsage.ok})::int`,
         tokens: sql<number>`sum(${aiUsage.inputTokens} + ${aiUsage.outputTokens} + ${aiUsage.cacheWriteTokens} + ${aiUsage.cacheReadTokens})::int`,
         cost: sql<string | null>`sum(${aiUsage.costUsd})`,
+        costArs: sql<string | null>`sum(${aiUsage.costUsd} * ${aiUsage.usdArs})`,
+        withoutRate: sql<number>`count(*) filter (where ${aiUsage.costUsd} > 0 and ${aiUsage.usdArs} is null)::int`,
       })
       .from(aiUsage)
       .groupBy(month)
@@ -63,6 +69,7 @@ async function Usage() {
         inputTokens: aiUsage.inputTokens,
         outputTokens: aiUsage.outputTokens,
         costUsd: aiUsage.costUsd,
+        usdArs: aiUsage.usdArs,
         ok: aiUsage.ok,
         error: aiUsage.error,
         durationMs: aiUsage.durationMs,
@@ -100,6 +107,12 @@ async function Usage() {
                 </div>
                 <div className="text-right">
                   <p className="font-medium tabular-nums">{usd(cost)}</p>
+                  {m.costArs !== null && (
+                    <p className="text-sm tabular-nums">
+                      ≈ {ars(Number(m.costArs))}
+                      {m.withoutRate > 0 && "*"}
+                    </p>
+                  )}
                   {cost !== null && m.succeeded > 0 && (
                     <p className="text-xs text-neutral-500 tabular-nums">{usd(cost / m.succeeded)} por lectura</p>
                   )}
@@ -136,7 +149,12 @@ async function Usage() {
                 </p>
                 {!r.ok && <p className="truncate text-xs text-red-600">{r.error}</p>}
               </div>
-              <p className="shrink-0 tabular-nums">{usd(r.costUsd)}</p>
+              <div className="shrink-0 text-right tabular-nums">
+                <p>{usd(r.costUsd)}</p>
+                {r.costUsd !== null && r.usdArs !== null && r.costUsd > 0 && (
+                  <p className="text-xs text-neutral-500">{ars(r.costUsd * r.usdArs)}</p>
+                )}
+              </div>
             </li>
           ))}
         </ul>

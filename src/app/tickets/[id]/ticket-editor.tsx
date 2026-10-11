@@ -9,6 +9,7 @@ import {
   suggestProducts,
   type TicketInput,
 } from "../actions";
+import { formatRefUnit, refPrice } from "@/lib/units";
 import { SepaInfo, SepaPicker } from "./sepa-picker";
 
 type Item = TicketInput["items"][number];
@@ -23,6 +24,7 @@ const emptyItem: Item = {
   unitPrice: null,
   discount: null,
   lineTotal: null,
+  printedRefPrice: null,
   productId: null,
   productName: null,
   brand: null,
@@ -83,6 +85,30 @@ function TextField({
         className={`${input} text-neutral-900 dark:text-neutral-100`}
       />
     </label>
+  );
+}
+
+// Precio por kilo o litro del renglón, recalculado mientras se edita.
+function RefPrice({ item }: { item: Item }) {
+  const ref = refPrice(item);
+  if (!ref) {
+    return (
+      <p className="text-xs text-neutral-500">
+        Precio por kilo: completá la presentación (ej. “500 g”, “1,5 l”) para calcularlo.
+      </p>
+    );
+  }
+  const printed = ref.fromTicket ? null : item.printedRefPrice;
+  const differs = printed && Math.abs(printed - ref.price) / printed > 0.02;
+  return (
+    <p className="text-xs text-neutral-700 dark:text-neutral-300">
+      Precio por {formatRefUnit(ref.unit)}: <strong className="tabular-nums">{money(ref.price)}</strong>
+      {ref.fromTicket && " (según el ticket)"}
+      {printed && !differs && " (coincide con el ticket)"}
+      {differs && (
+        <span className="text-amber-700 dark:text-amber-400"> · el ticket dice {money(printed)}: revisá la presentación</span>
+      )}
+    </p>
   );
 }
 
@@ -289,6 +315,8 @@ export function TicketEditor({
                 <NumberField label="Desc." value={item.discount} onChange={(v) => setItem(i, { discount: v })} />
                 <NumberField label="Total" value={item.lineTotal} onChange={(v) => setItem(i, { lineTotal: v })} />
               </div>
+
+              {item.kind === "producto" && <RefPrice item={item} />}
 
               {item.kind === "producto" && (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { aiUsage } from "@/db/schema";
 import { costUsd, type TokenUsage } from "./ai-pricing";
 import { CATEGORIES } from "./categories";
+import { usdArsToday } from "./fx";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
 
@@ -46,6 +47,10 @@ const RawTicket = z.object({
         .number()
         .nullable()
         .describe("Importe del renglón; negativo si es un descuento"),
+      printedRefPrice: z
+        .number()
+        .nullable()
+        .describe("Precio por kg o por litro, solo si el ticket lo imprime para este renglón"),
       productName: z
         .string()
         .describe('Nombre genérico normalizado, ej. "Queso rallado"; "" si no es un producto'),
@@ -92,6 +97,8 @@ const SYSTEM = `Leés fotos de tickets de supermercados de Argentina y devolvés
 - Códigos: si junto al producto figura un código de barras EAN/GTIN (8, 12, 13 o 14 dígitos, en Argentina suelen empezar con 779), va en ean. Los códigos cortos o internos del súper (ej. "4600") van en storeCode, nunca en ean. No inventes códigos.
 - Muchos tickets imprimen cada producto en dos líneas: arriba "cantidad x precio unitario" y abajo código, descripción, alícuota de IVA entre paréntesis (ej. "(21.0)") e importe. Es un solo renglón; la alícuota no es parte de la descripción.
 - Productos pesados (fiambres, quesos al corte, carne, verdura): quantity en kg (ej. 0.645), unit "kg", unitPrice por kg.
+- Si el ticket informa el precio por kilo o por litro de un producto envasado (ej. "$/kg 13.333,33"), va en printedRefPrice.
+- presentation es el contenido neto del envase con su unidad ("150 g", "1,5 l", "pack x 6 de 500 ml"); es lo que permite calcular el precio por kilo, así que completalo siempre que lo sepas por la descripción o la marca.
 - Promociones y descuentos: si el ticket muestra el descuento en un renglón propio, devolvelo como item kind "descuento" con lineTotal negativo, inmediatamente después del producto al que corresponde.
 - No son renglones: subtotales, el pago (efectivo, tarjeta), el vuelto, el redondeo, ni los impuestos informados (IVA contenido, etc.). total es el TOTAL impreso.
 - Las fechas suelen venir como DD-MM-AA (09-10-26 es 9 de octubre de 2026).
@@ -135,6 +142,7 @@ async function recordUsage(
     const rows = message
       ? usageByModel(message)
       : [{ model: MODEL, inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0 }];
+    const usdArs = await usdArsToday();
     await db.insert(aiUsage).values(
       rows.map((usage) => ({
         purpose: "lectura_ticket",
@@ -145,6 +153,7 @@ async function recordUsage(
         ok: !error,
         error,
         durationMs: Date.now() - started,
+        usdArs,
       })),
     );
   } catch (e) {
