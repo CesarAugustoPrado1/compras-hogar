@@ -58,20 +58,41 @@ export function UploadForm() {
 
   return (
     <form action={submit} className="flex flex-col gap-4">
-      <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-neutral-300 p-6 text-center dark:border-neutral-700">
-        <span className="font-medium">{photos.length ? "Agregar otra foto" : "Sacar o elegir fotos"}</span>
-        <span className="text-xs text-neutral-500">En orden, de arriba hacia abajo del ticket</span>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="sr-only"
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.target.value = "";
-          }}
-        />
-      </label>
+      {/* Dos entradas: en Android, un input con "multiple" abre solo la galería, sin cámara.
+          El de la cámara saca una foto por vez; para tickets largos se repite. */}
+      <div className="grid grid-cols-2 gap-2">
+        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-emerald-500 p-5 text-center">
+          <span className="text-2xl" aria-hidden>📷</span>
+          <span className="font-medium">{photos.length ? "Sacar otra foto" : "Sacar foto"}</span>
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="sr-only"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border-2 border-dashed border-neutral-300 p-5 text-center dark:border-neutral-700">
+          <span className="text-2xl" aria-hidden>🖼️</span>
+          <span className="font-medium">Elegir de la galería</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="sr-only"
+            onChange={(e) => {
+              addFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
+      <p className="text-center text-xs text-neutral-500">
+        Ticket largo: sacá varias fotos de arriba hacia abajo, una por vez.
+      </p>
 
       {photos.length > 0 && (
         <ol className="grid grid-cols-3 gap-2 sm:grid-cols-4">
